@@ -44,4 +44,4 @@ In order to use the slack integration you've to extend the environment variables
 
 ##Telegram configuration
 
-tbd.
+Visit the [telegram bot introduction](https://core.telegram.org/bots) and use `@botFather` to create a new bot. Note the HTTP API token as you will need it to extend your `.env` file.
