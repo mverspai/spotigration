@@ -1,7 +1,7 @@
 {
-  "name": "benchmark-slackbox",
-  "version": "0.1.0",
-  "description": "Spotify playlist collaboration through Slack.",
+  "name": "wizzn-spotigration",
+  "version": "0.0.1",
+  "description": "Spotify playlist collaboration through Slack and telegram bot.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -9,10 +9,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "benchmarkstudios/slackbox"
+    "url": "wizzn/spotigration"
   },
-  "author": "Mike Francis <mikeffrancis@gmail.com>",
-  "license": "MIT",
+  "author": "Martin Verspai <github@verspai.de>",
   "devDependencies": {},
   "dependencies": {
     "spotify-web-api-node": "~2.2.0",
