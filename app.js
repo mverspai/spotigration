@@ -3,6 +3,9 @@ var bodyParser    = require('body-parser');
 var request       = require('request');
 var dotenv        = require('dotenv');
 var SpotifyWebApi = require('spotify-web-api-node');
+var TelegramBot   = require('node-telegram-bot-api');
+
+var lastTelegramMessageId = 0;
 
 dotenv.load();
 
@@ -10,6 +13,56 @@ var spotifyApi = new SpotifyWebApi({
   clientId     : process.env.SPOTIFY_KEY,
   clientSecret : process.env.SPOTIFY_SECRET,
   redirectUri  : process.env.SPOTIFY_REDIRECT_URI
+});
+
+var telegramApi = new TelegramBot(
+  process.env.TELEGRAM_TOKEN,
+  { polling: true }
+);
+
+telegramApi.onText(/spotify/, function(message) {
+  if(message.message_id > lastTelegramMessageId) {
+    lastTelegramMessageId = message.message_id;
+
+    var chatId = message.chat.id;
+
+    if(message.text.length > message.entities[0].length) {
+      var input = message.text.substr(message.entities[0].length);
+      spotifyApi.refreshAccessToken()
+        .then(function(data) {
+          spotifyApi.setAccessToken(data.body['access_token']);
+          if (data.body['refresh_token']) { 
+            spotifyApi.setRefreshToken(data.body['refresh_token']);
+          }
+          if(input.indexOf(' - ') === -1) {
+            var query = 'track:' + input;
+          } else { 
+            var pieces = input.split(' - ');
+            var query = 'artist:' + pieces[0].trim() + ' track:' + pieces[1].trim();
+          }
+          spotifyApi.searchTracks(query)
+            .then(function(data) {
+              var results = data.body.tracks.items;
+              if (results.length === 0) {
+                telegramApi.sendMessage(message.chat.id, 'Could not find that track.');
+              }
+              var track = results[0];
+              spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track.id])
+                .then(function(data) {
+                  telegramApi.sendMessage(message.chat.id, 'Track added: *' + track.name + '* by *' + track.artists[0].name + '*');
+                }, function(err) {
+                  telegramApi.sendMessage(message.chat.id, err.message);
+                });
+            }, function(err) {
+              telegramApi.sendMessage(message.chat.id, err.message);
+            });
+        }, function(err) {
+          telegramApi.sendMessage(message.chat.id, 'Could not refresh access token. You probably need to re-authorise yourself from your app\'s homepage.');
+        });
+    } else {
+      telegramApi.sendMessage(message.chat.id, 'No content found for command. Please provide content like this \'/spotify your song title\'');
+    }
+  }
 });
 
 var app = express();
