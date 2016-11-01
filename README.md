@@ -3,7 +3,7 @@ Spotify playlist collaboration through Slack and Telegram Bots.
 
 ##Spotify configuration
 
-Head over to [Spotify's Developer Site](http://developer.spotify.com) and create a new Application. Make sure you add whatever slackbox's callback URI as a valid callback URI. If you're running locally, this will be `http://localhost:5000/callback` or on Heroku `https://app-name.herokuapp.com/callback`
+Head over to [Spotify's Developer Site](http://developer.spotify.com) and create a new Application. Make sure you add whatever spotigration's callback URI as a valid callback URI. If you're running locally, this will be `http://localhost:5000/callback`
 
 Make a note of the `key`, `secret` and `callback URI` too, as you'll need these later as well.
 
