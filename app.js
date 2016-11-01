@@ -20,11 +20,13 @@ var telegramApi = new TelegramBot(
   { polling: true }
 );
 
+telegramApi.onText(/help/, function(message) {
+  telegramApi.sendMessage(message.chat.id, 'No content found for command. Please provide content like this \'/spotify Song Title\' or \'/spotify Artist - Song Title\'');
+});
+
 telegramApi.onText(/spotify/, function(message) {
   if(message.message_id > lastTelegramMessageId) {
     lastTelegramMessageId = message.message_id;
-
-    var chatId = message.chat.id;
 
     if(message.text.length > message.entities[0].length) {
       var input = message.text.substr(message.entities[0].length);
@@ -49,7 +51,7 @@ telegramApi.onText(/spotify/, function(message) {
               var track = results[0];
               spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track.id])
                 .then(function(data) {
-                  telegramApi.sendMessage(message.chat.id, 'Track added: *' + track.name + '* by *' + track.artists[0].name + '*');
+                  telegramApi.sendMessage(message.chat.id, 'Track added: ' + track.name + ' by ' + track.artists[0].name);
                 }, function(err) {
                   telegramApi.sendMessage(message.chat.id, err.message);
                 });
@@ -60,7 +62,7 @@ telegramApi.onText(/spotify/, function(message) {
           telegramApi.sendMessage(message.chat.id, 'Could not refresh access token. You probably need to re-authorise yourself from your app\'s homepage.');
         });
     } else {
-      telegramApi.sendMessage(message.chat.id, 'No content found for command. Please provide content like this \'/spotify your song title\'');
+      telegramApi.sendMessage(message.chat.id, 'No content found for command. Please provide content like this \'/spotify Song Title\' or \'/spotify Artist - Song Title\'');
     }
   }
 });
