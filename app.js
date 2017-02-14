@@ -21,7 +21,21 @@ var telegramApi = new TelegramBot(
 );
 
 telegramApi.onText(/help/, function(message) {
-  telegramApi.sendMessage(message.chat.id, 'No content found for command. Please provide content like this \'/spotify Song Title\' or \'/spotify Artist - Song Title\'');
+  telegramApi.sendMessage(message.chat.id, 'You can add content like either like this: \'/spotify Song Title\' or \'/spotify Artist - Song Title\' OR simply paste a spotify track link to the chat.');
+});
+
+telegramApi.onText(/.*/, function(message) {
+  if(message.message_id > lastTelegramMessageId) {
+    lastTelegramMessageId = message.message_id;
+
+    //https://open.spotify.com/track/6zhhou0uz44lF7XSOF6PC5
+    if(message.text.startsWith("https://open.spotify.com/track/"))
+      var pieces = message.text.split('/');
+      var track = pieces[pieces.length -1 ];
+
+      spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track]);
+      telegramApi.sendMessage(message.chat.id, 'Added track to playlist: ' + track);
+  }
 });
 
 telegramApi.onText(/spotify/, function(message) {
