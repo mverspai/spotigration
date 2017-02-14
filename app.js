@@ -28,13 +28,16 @@ telegramApi.onText(/.*/, function(message) {
   if(message.message_id > lastTelegramMessageId) {
     lastTelegramMessageId = message.message_id;
 
-    //https://open.spotify.com/track/6zhhou0uz44lF7XSOF6PC5
     if(message.text.startsWith("https://open.spotify.com/track/"))
       var pieces = message.text.split('/');
       var track = pieces[pieces.length -1 ];
 
-      spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track]);
-      telegramApi.sendMessage(message.chat.id, 'Added track to playlist: ' + track);
+      spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track])
+      .then(function(data) {
+        telegramApi.sendMessage(message.chat.id, 'Added track to playlist!');
+      }, function(err) {
+        telegramApi.sendMessage(message.chat.id, 'Could not add track to playlist: ' + err.message);
+      });
   }
 });
 
