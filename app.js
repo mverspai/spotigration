@@ -21,66 +21,32 @@ var telegramApi = new TelegramBot(
 );
 
 telegramApi.onText(/help/, function(message) {
-  telegramApi.sendMessage(message.chat.id, 'You can add content like either like this: \'/spotify Song Title\' or \'/spotify Artist - Song Title\' OR simply paste a spotify track link to the chat.');
+  telegramApi.sendMessage(message.chat.id, 'Send the track\'s url in order to store it to the pre-configured playlist.');
 });
 
 telegramApi.onText(/.*/, function(message) {
   if(message.message_id > lastTelegramMessageId) {
     lastTelegramMessageId = message.message_id;
 
-    if(message.text.startsWith("https://open.spotify.com/track/"))
+  if(message.text.startsWith("https://open.spotify.com/track/")) {
       var pieces = message.text.split('/');
       var track = pieces[pieces.length -1 ];
-
-      spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track])
-      .then(function(data) {
-        telegramApi.sendMessage(message.chat.id, 'Added track to playlist!');
-      }, function(err) {
-        telegramApi.sendMessage(message.chat.id, 'Could not add track to playlist: ' + err.message);
-      });
-  }
-});
-
-telegramApi.onText(/spotify/, function(message) {
-  if(message.message_id > lastTelegramMessageId) {
-    lastTelegramMessageId = message.message_id;
-
-    if(message.text.length > message.entities[0].length) {
-      var input = message.text.substr(message.entities[0].length);
       spotifyApi.refreshAccessToken()
         .then(function(data) {
           spotifyApi.setAccessToken(data.body['access_token']);
           if (data.body['refresh_token']) { 
             spotifyApi.setRefreshToken(data.body['refresh_token']);
           }
-          if(input.indexOf(' - ') === -1) {
-            var query = 'track:' + input;
-          } else { 
-            var pieces = input.split(' - ');
-            var query = 'artist:' + pieces[0].trim() + ' track:' + pieces[1].trim();
-          }
-          spotifyApi.searchTracks(query)
+          spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track])
             .then(function(data) {
-              var results = data.body.tracks.items;
-              if (results.length === 0) {
-                telegramApi.sendMessage(message.chat.id, 'Could not find that track.');
-              }
-              var track = results[0];
-              spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track.id])
-                .then(function(data) {
-                  telegramApi.sendMessage(message.chat.id, 'Track added: ' + track.name + ' by ' + track.artists[0].name);
-                }, function(err) {
-                  telegramApi.sendMessage(message.chat.id, err.message);
-                });
+              telegramApi.sendMessage(message.chat.id, 'Added track to playlist!');
             }, function(err) {
-              telegramApi.sendMessage(message.chat.id, err.message);
+              telegramApi.sendMessage(message.chat.id, 'Could not add track to playlist: ' + err.message);
             });
-        }, function(err) {
+      }, function(err) {
           telegramApi.sendMessage(message.chat.id, 'Could not refresh access token. You probably need to re-authorise yourself from your app\'s homepage.');
-        });
-    } else {
-      telegramApi.sendMessage(message.chat.id, 'No content found for command. Please provide content like this \'/spotify Song Title\' or \'/spotify Artist - Song Title\'');
-    }
+      });
+    }   
   }
 });
 
