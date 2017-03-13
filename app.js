@@ -2,6 +2,7 @@ var express       = require('express');
 var bodyParser    = require('body-parser');
 var request       = require('request');
 var dotenv        = require('dotenv');
+var cron          = require('cron');
 var SpotifyWebApi = require('spotify-web-api-node');
 var TelegramBot   = require('node-telegram-bot-api');
 
@@ -19,6 +20,24 @@ var telegramApi = new TelegramBot(
   process.env.TELEGRAM_TOKEN,
   { polling: true }
 );
+
+var refresh = new cron.CronJob({
+  cronTime: '* * 0 * *',
+  onTick: function() {
+    spotifyApi.refreshAccessToken()
+        .then(function(data) {
+          spotifyApi.setAccessToken(data.body['access_token']);
+          if (data.body['refresh_token']) { 
+            spotifyApi.setRefreshToken(data.body['refresh_token']);
+          }
+          });
+      }, function(err) {
+          console.log('Could not refresh tokens');
+      });
+  },
+  start: false,
+  timeZone: 'Europe/Berlin'
+});
 
 telegramApi.onText(/help/, function(message) {
   telegramApi.sendMessage(message.chat.id, 'Send the track\'s url in order to store it to the pre-configured playlist.');
@@ -75,6 +94,7 @@ app.get('/callback', function(req, res) {
     .then(function(data) {
       spotifyApi.setAccessToken(data.body['access_token']);
       spotifyApi.setRefreshToken(data.body['refresh_token']);
+      refresh.start();
       return res.redirect('/');
     }, function(err) {
       return res.send(err);
