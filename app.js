@@ -25,15 +25,12 @@ var refresh = new cron.CronJob({
   cronTime: '* * 0 * *',
   onTick: function() {
     spotifyApi.refreshAccessToken()
-        .then(function(data) {
-          spotifyApi.setAccessToken(data.body['access_token']);
-          if (data.body['refresh_token']) { 
-            spotifyApi.setRefreshToken(data.body['refresh_token']);
-          }
-          });
-      }, function(err) {
-          console.log('Could not refresh tokens');
-      });
+      .then(function(data) {
+        spotifyApi.setAccessToken(data.body['access_token']);
+        if (data.body['refresh_token']) { 
+          spotifyApi.setRefreshToken(data.body['refresh_token']);
+        }
+    });
   },
   start: false,
   timeZone: 'Europe/Berlin'
