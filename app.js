@@ -11,9 +11,9 @@ var lastTelegramMessageId = 0;
 dotenv.load();
 
 var spotifyApi = new SpotifyWebApi({
-  clientId     : process.env.SPOTIFY_KEY,
-  clientSecret : process.env.SPOTIFY_SECRET,
-  redirectUri  : process.env.SPOTIFY_REDIRECT_URI
+  clientId:     process.env.SPOTIFY_KEY,
+  clientSecret: process.env.SPOTIFY_SECRET,
+  redirectUri:  process.env.SPOTIFY_REDIRECT_URI,
 });
 
 var telegramApi = new TelegramBot(
@@ -23,119 +23,151 @@ var telegramApi = new TelegramBot(
 
 var refresh = new cron.CronJob({
   cronTime: '* * 0 * *',
-  onTick: function() {
-    spotifyApi.refreshAccessToken()
-      .then(function(data) {
-        spotifyApi.setAccessToken(data.body['access_token']);
-        if (data.body['refresh_token']) { 
-          spotifyApi.setRefreshToken(data.body['refresh_token']);
+  onTick: function () {
+      spotifyApi.refreshAccessToken()
+      .then(function (data) {
+        spotifyApi.setAccessToken(data.body.access_token);
+        if (data.body.refresh_token) {
+          spotifyApi.setRefreshToken(data.body.refresh_token);
         }
-    });
-  },
+      });
+    },
+
   start: false,
-  timeZone: 'Europe/Berlin'
+  timeZone: 'Europe/Berlin',
 });
 
-telegramApi.onText(/help/, function(message) {
-  telegramApi.sendMessage(message.chat.id, 'Send the track\'s url in order to store it to the pre-configured playlist.');
+telegramApi.onText(/help/, function (message) {
+  telegramApi.sendMessage(message.chat.id, 'Send the track\'s url to add it to the playlist.');
 });
 
-telegramApi.onText(/.*/, function(message) {
-  if(message.message_id > lastTelegramMessageId) {
+telegramApi.onText(/.*/, function (message) {
+  if (message.message_id > lastTelegramMessageId) {
     lastTelegramMessageId = message.message_id;
 
-  if(message.text.startsWith("https://open.spotify.com/track/")) {
+    if (message.text.startsWith('https://open.spotify.com/track/')) {
       var pieces = message.text.split('/');
-      var track = pieces[pieces.length -1 ];
+      var track = pieces[pieces.length - 1];
       spotifyApi.refreshAccessToken()
-        .then(function(data) {
-          spotifyApi.setAccessToken(data.body['access_token']);
-          if (data.body['refresh_token']) { 
-            spotifyApi.setRefreshToken(data.body['refresh_token']);
+        .then(function (data) {
+          spotifyApi.setAccessToken(data.body.access_token);
+          if (data.body.refresh_token) {
+            spotifyApi.setRefreshToken(data.body.refresh_token);
           }
-          spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track])
-            .then(function(data) {
+
+          var username = process.env.SPOTIFY_USERNAME;
+          var playlist = process.env.SPOTIFY_PLAYLIST_ID;
+
+          spotifyApi.addTracksToPlaylist(username, playlist, ['spotify:track:' + track])
+            .then(function (data) {
               telegramApi.sendMessage(message.chat.id, 'Added track to playlist!');
-            }, function(err) {
-              telegramApi.sendMessage(message.chat.id, 'Could not add track to playlist: ' + err.message);
+            },
+
+            function (err) {
+              telegramApi.sendMessage(message.chat.id,
+                'Could not add track to playlist: ' + err.message);
             });
-      }, function(err) {
-          telegramApi.sendMessage(message.chat.id, 'Could not refresh access token. You probably need to re-authorise yourself from your app\'s homepage.');
-      });
-    }   
+        },
+
+        function (err) {
+          telegramApi.sendMessage(message.chat.id,
+            'Could not refresh access token. Please re-authorise yourself!');
+        });
+    }
   }
 });
 
 var app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
-  extended: true
+  extended: true,
 }));
 
-app.get('/', function(req, res) {
+app.get('/', function (req, res) {
   if (spotifyApi.getAccessToken()) {
     return res.send('You are logged in.');
   }
+
   return res.send('<a href="/authorise">Authorise</a>');
 });
 
-app.get('/authorise', function(req, res) {
+app.get('/authorise', function (req, res) {
   var scopes = ['playlist-modify-public', 'playlist-modify-private'];
   var state  = new Date().getTime();
   var authoriseURL = spotifyApi.createAuthorizeURL(scopes, state);
   res.redirect(authoriseURL);
 });
 
-app.get('/callback', function(req, res) {
+app.get('/callback', function (req, res) {
   spotifyApi.authorizationCodeGrant(req.query.code)
-    .then(function(data) {
-      spotifyApi.setAccessToken(data.body['access_token']);
-      spotifyApi.setRefreshToken(data.body['refresh_token']);
+    .then(function (data) {
+      spotifyApi.setAccessToken(data.body.access_token);
+      spotifyApi.setRefreshToken(data.body.refresh_token);
       refresh.start();
       return res.redirect('/');
-    }, function(err) {
+    },
+
+    function (err) {
       return res.send(err);
     });
 });
 
-app.use('/store', function(req, res, next) {
+app.use('/store', function (req, res, next) {
   if (req.body.token !== process.env.SLACK_TOKEN) {
     return res.status(500).send('Cross site request forgerizzle!');
   }
+
   next();
 });
 
-app.post('/store', function(req, res) {
+app.post('/store', function (req, res) {
   spotifyApi.refreshAccessToken()
-    .then(function(data) {
-      spotifyApi.setAccessToken(data.body['access_token']);
-      if (data.body['refresh_token']) { 
-        spotifyApi.setRefreshToken(data.body['refresh_token']);
+    .then(function (data) {
+      spotifyApi.setAccessToken(data.body.access_token);
+      if (data.body.refresh_token) {
+        spotifyApi.setRefreshToken(data.body.refresh_token);
       }
-      if(req.body.text.indexOf(' - ') === -1) {
-        var query = 'track:' + req.body.text;
-      } else { 
+
+      var query;
+      if (req.body.text.indexOf(' - ') === -1) {
+        query = 'track:' + req.body.text;
+      } else {
         var pieces = req.body.text.split(' - ');
-        var query = 'artist:' + pieces[0].trim() + ' track:' + pieces[1].trim();
+        query = 'artist:' + pieces[0].trim() + ' track:' + pieces[1].trim();
       }
+
       spotifyApi.searchTracks(query)
-        .then(function(data) {
+        .then(function (data) {
           var results = data.body.tracks.items;
           if (results.length === 0) {
             return res.send('Could not find that track.');
           }
+
           var track = results[0];
-          spotifyApi.addTracksToPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID, ['spotify:track:' + track.id])
-            .then(function(data) {
-              return res.send('Track added: *' + track.name + '* by *' + track.artists[0].name + '*');
-            }, function(err) {
+          var username = process.env.SPOTIFY_USERNAME;
+          var playlist = process.env.SPOTIFY_PLAYLIST_ID;
+
+          spotifyApi.addTracksToPlaylist(username, playlist, ['spotify:track:' + track.id])
+            .then(function (data) {
+
+              var title = track.name;
+              var artist = track.artists[0].name;
+
+              return res.send('Track added: *' + title + '* by *' + artist + '*');
+            },
+
+            function (err) {
               return res.send(err.message);
             });
-        }, function(err) {
+        },
+
+        function (err) {
           return res.send(err.message);
         });
-    }, function(err) {
-      return res.send('Could not refresh access token. You probably need to re-authorise yourself from your app\'s homepage.');
+    },
+
+    function (err) {
+      return res.send('Could not refresh access token. Please re-authorise yourself!');
     });
 });
 
