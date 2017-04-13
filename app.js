@@ -21,8 +21,8 @@ var telegramApi = new TelegramBot(
   { polling: true }
 );
 
-var refresh = new cron.CronJob({
-  cronTime: '* * 0 * *',
+var cronJob = new cron.CronJob({
+  cronTime: '0 30 * * * *',
   onTick: function () {
       spotifyApi.refreshAccessToken()
       .then(function (data) {
@@ -173,3 +173,4 @@ app.post('/store', function (req, res) {
 
 app.set('port', (process.env.PORT || 5000));
 app.listen(app.get('port'));
+cronJob.start();
