@@ -41,13 +41,30 @@ telegramApi.onText(/help/, function (message) {
   telegramApi.sendMessage(message.chat.id, 'Send the track\'s url to add it to the playlist.');
 });
 
+function isTrackDuplicate(trackId) {
+  spotifyApi.getPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID)
+    .then(function (data) {
+      data.body.tracks.items.forEach(function (entry) {
+        if (entry.track.id === trackId) {
+          return true;
+        }
+      });
+
+      return false;
+    },
+
+    function (err) {
+      return false;
+    });
+}
+
 telegramApi.onText(/.*/, function (message) {
   if (message.message_id > lastTelegramMessageId) {
     lastTelegramMessageId = message.message_id;
 
     if (message.text.startsWith('https://open.spotify.com/track/')) {
       var pieces = message.text.split('/');
-      var track = pieces[pieces.length - 1];
+      var trackId = pieces[pieces.length - 1];
       spotifyApi.refreshAccessToken()
         .then(function (data) {
           spotifyApi.setAccessToken(data.body.access_token);
@@ -55,10 +72,14 @@ telegramApi.onText(/.*/, function (message) {
             spotifyApi.setRefreshToken(data.body.refresh_token);
           }
 
-          var username = process.env.SPOTIFY_USERNAME;
-          var playlist = process.env.SPOTIFY_PLAYLIST_ID;
+          if (isTrackDuplicate(trackId)) {
+            telegramApi.sendMessage(
+              message.chat.id, 'Track has already been added! Nice taste in music though ;)');
+          } else {
+            var username = process.env.SPOTIFY_USERNAME;
+            var playlist = process.env.SPOTIFY_PLAYLIST_ID;
 
-          spotifyApi.addTracksToPlaylist(username, playlist, ['spotify:track:' + track])
+            spotifyApi.addTracksToPlaylist(username, playlist, ['spotify:track:' + trackId])
             .then(function (data) {
               telegramApi.sendMessage(message.chat.id, 'Added track to playlist!');
             },
@@ -67,6 +88,7 @@ telegramApi.onText(/.*/, function (message) {
               telegramApi.sendMessage(message.chat.id,
                 'Could not add track to playlist: ' + err.message);
             });
+          }
         },
 
         function (err) {
