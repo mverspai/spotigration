@@ -42,20 +42,22 @@ telegramApi.onText(/help/, function (message) {
 });
 
 function isTrackDuplicate(trackId) {
-  spotifyApi.getPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID)
+  return new Promise(function (resolve, reject) {
+    spotifyApi.getPlaylist(process.env.SPOTIFY_USERNAME, process.env.SPOTIFY_PLAYLIST_ID)
     .then(function (data) {
       data.body.tracks.items.forEach(function (entry) {
         if (entry.track.id === trackId) {
-          return true;
+          resolve(true);
         }
       });
 
-      return false;
+      resolve(false);
     },
 
     function (err) {
-      return false;
+      resolve(false);
     });
+  });
 }
 
 telegramApi.onText(/.*/, function (message) {
@@ -72,23 +74,25 @@ telegramApi.onText(/.*/, function (message) {
             spotifyApi.setRefreshToken(data.body.refresh_token);
           }
 
-          if (isTrackDuplicate(trackId)) {
-            telegramApi.sendMessage(
-              message.chat.id, 'Track has already been added! Nice taste in music though ;)');
-          } else {
-            var username = process.env.SPOTIFY_USERNAME;
-            var playlist = process.env.SPOTIFY_PLAYLIST_ID;
+          isTrackDuplicate(trackId).then(function (duplicate) {
+            if (duplicate) {
+              telegramApi.sendMessage(
+                message.chat.id, 'Track has already been added! Nice taste in music though ;)');
+            } else {
+              var username = process.env.SPOTIFY_USERNAME;
+              var playlist = process.env.SPOTIFY_PLAYLIST_ID;
 
-            spotifyApi.addTracksToPlaylist(username, playlist, ['spotify:track:' + trackId])
-            .then(function (data) {
-              telegramApi.sendMessage(message.chat.id, 'Added track to playlist!');
-            },
+              spotifyApi.addTracksToPlaylist(username, playlist, ['spotify:track:' + trackId])
+              .then(function (data) {
+                telegramApi.sendMessage(message.chat.id, 'Added track to playlist!');
+              },
 
-            function (err) {
-              telegramApi.sendMessage(message.chat.id,
-                'Could not add track to playlist: ' + err.message);
-            });
-          }
+              function (err) {
+                telegramApi.sendMessage(message.chat.id,
+                  'Could not add track to playlist: ' + err.message);
+              });
+            }
+          });
         },
 
         function (err) {
