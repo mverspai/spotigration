@@ -22,12 +22,14 @@ var telegramApi = new TelegramBot(
 );
 
 var cronJob = new cron.CronJob({
-  cronTime: '0 30 * * * *',
+  cronTime: '0/10 * * * * *',
   onTick: function () {
       spotifyApi.refreshAccessToken()
       .then(function (data) {
+        console.log(Date.now(), 'Received new access token.');
         spotifyApi.setAccessToken(data.body.access_token);
         if (data.body.refresh_token) {
+          console.log(Date.now(), 'Also got refresh token.');
           spotifyApi.setRefreshToken(data.body.refresh_token);
         }
       });
@@ -66,7 +68,8 @@ telegramApi.onText(/.*/, function (message) {
 
     if (message.text.startsWith('https://open.spotify.com/track/')) {
       var pieces = message.text.split('/');
-      var trackId = pieces[pieces.length - 1];
+      var trackPieces = pieces[pieces.length - 1].split('?');
+      var trackId = trackPieces[0];
       spotifyApi.refreshAccessToken()
         .then(function (data) {
           spotifyApi.setAccessToken(data.body.access_token);
